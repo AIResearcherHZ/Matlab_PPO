@@ -30,12 +30,21 @@ classdef MAPPOAgent < handle
     methods
         function obj = MAPPOAgent(config)
             % 构造函数
+            
+            % 验证输入
+            assert(~isempty(config.envName), 'MAPPOAgent:环境名称不能为空');
+            assert(config.numAgents > 0, 'MAPPOAgent:智能体数量必须大于0');
+            
             obj.config = config;
             obj.useGPU = config.useGPU;
             obj.numAgents = config.numAgents;
             
             % 创建环境
-            obj.env = feval(config.envName);
+            try
+                obj.env = feval(config.envName);
+            catch ME
+                error('MAPPOAgent:无法创建环境 %s: %s', config.envName, ME.message);
+            end
             
             % 设置学习率和动量
             obj.actorLearningRate = config.actorLearningRate;
@@ -77,10 +86,8 @@ classdef MAPPOAgent < handle
                         obj.useGPU);
                 end
                 
-                % 创建每个智能体的优化器
-                obj.actorOptimizers{i} = dlupdate.sgdmoptimizer(...
-                    obj.config.actorLearningRate, ...
-                    obj.config.momentum);
+                % 初始化优化器状态为空（由dlupdate.sgdm管理）
+                obj.actorOptimizers{i} = [];
             end
             
             % 创建中央价值网络（Critic）- 接收所有智能体的联合观察
@@ -90,10 +97,8 @@ classdef MAPPOAgent < handle
                 obj.config.criticLayerSizes, ...
                 obj.useGPU);
             
-            % 创建价值网络优化器
-            obj.criticOptimizer = dlupdate.sgdmoptimizer(...
-                obj.config.criticLearningRate, ...
-                obj.config.momentum);
+            % 初始化价值网络优化器状态为空（由dlupdate.sgdm管理）
+            obj.criticOptimizer = [];
         end
         
         function trajectories = collectTrajectories(obj, trajectoryLen, numTrajectories)
@@ -402,8 +407,9 @@ classdef MAPPOAgent < handle
                         gradients = dlupdate.clipgradients(gradients, obj.config.maxGradNorm);
                         
                         % 更新网络权重
-                        obj.actorNets{agentIdx} = dlupdate.sgdm(obj.actorNets{agentIdx}, gradients, ...
-                            obj.actorLearningRate, obj.momentum);
+                        [obj.actorNets{agentIdx}.learnables, obj.actorOptimizers{agentIdx}] = ...
+                            dlupdate.sgdm(obj.actorNets{agentIdx}.learnables, gradients, ...
+                            obj.actorOptimizers{agentIdx}, obj.actorLearningRate, obj.momentum);
                         
                         % 记录损失
                         if obj.useGPU
@@ -439,8 +445,9 @@ classdef MAPPOAgent < handle
                     gradients = dlupdate.clipgradients(gradients, obj.config.maxGradNorm);
                     
                     % 更新网络权重
-                    obj.criticNet = dlupdate.sgdm(obj.criticNet, gradients, ...
-                        obj.criticLearningRate, obj.momentum);
+                    [obj.criticNet.learnables, obj.criticOptimizer] = ...
+                        dlupdate.sgdm(obj.criticNet.learnables, gradients, ...
+                        obj.criticOptimizer, obj.criticLearningRate, obj.momentum);
                     
                     % 记录价值网络损失
                     if obj.useGPU
@@ -488,7 +495,7 @@ classdef MAPPOAgent < handle
             entropy = entValue;
             
             % 计算梯度
-            gradients = dlgradient(loss, actorNet.Parameters);
+            gradients = dlgradient(loss, actorNet.learnables);
         end
         
         function [gradients, loss] = criticLossGradients(obj, criticNet, obs, returns, vfCoef)
@@ -504,11 +511,15 @@ classdef MAPPOAgent < handle
             loss = vfCoef * valueLoss;
             
             % 计算梯度
-            gradients = dlgradient(loss, criticNet.Parameters);
+            gradients = dlgradient(loss, criticNet.learnables);
         end
         
         function train(obj, numIterations)
             % 训练多智能体PPO
+            
+            % 验证输入
+            assert(numIterations > 0 && numIterations == floor(numIterations), ...
+                'MAPPOAgent:迭代次数必须是正整数');
             
             for iter = 1:numIterations
                 % 收集轨迹
@@ -574,9 +585,13 @@ classdef MAPPOAgent < handle
         
         function result = evaluate(obj, numEpisodes, render)
             % 评估当前策略
+            
+            % 验证输入
             if nargin < 3
                 render = false;
             end
+            assert(numEpisodes > 0 && numEpisodes == floor(numEpisodes), ...
+                'MAPPOAgent:评估回合数必须是正整数');
             
             returns = zeros(numEpisodes, 1);
             lengths = zeros(numEpisodes, 1);
@@ -641,29 +656,33 @@ classdef MAPPOAgent < handle
             % 提取所有智能体的参数
             actorParams = cell(obj.numAgents, 1);
             for i = 1:obj.numAgents
-                actorParams{i} = obj.actorNets{i}.Parameters;
+                actorParams{i} = obj.actorNets{i}.learnables;
             end
             
-            criticParams = obj.criticNet.Parameters;
+            criticParams = obj.criticNet.learnables;
+            config = obj.config;
             
             % 保存到.mat文件
-            save(filepath, 'actorParams', 'criticParams', 'obj');
+            save(filepath, 'actorParams', 'criticParams', 'config');
             fprintf('模型已保存到 %s\n', filepath);
         end
         
         function loadModel(obj, filepath)
             % 加载模型权重
             
+            % 验证文件是否存在
+            assert(exist(filepath, 'file') == 2, 'MAPPOAgent:模型文件不存在: %s', filepath);
+            
             % 加载.mat文件
             load(filepath, 'actorParams', 'criticParams');
             
             % 设置智能体参数
             for i = 1:obj.numAgents
-                obj.actorNets{i}.Parameters = actorParams{i};
+                obj.actorNets{i}.learnables = actorParams{i};
             end
             
             % 设置价值网络参数
-            obj.criticNet.Parameters = criticParams;
+            obj.criticNet.learnables = criticParams;
             
             fprintf('模型已从 %s 加载\n', filepath);
         end

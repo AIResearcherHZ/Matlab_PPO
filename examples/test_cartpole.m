@@ -11,6 +11,11 @@ addpath('../utils');
 % 模型路径
 modelPath = '../logs/cartpole/model_iter_100.mat';
 
+% 检查模型文件是否存在
+if ~exist(modelPath, 'file')
+    error('模型文件不存在: %s\n请先运行train_cartpole.m进行训练', modelPath);
+end
+
 % 加载配置
 config = PPOConfig();
 config.envName = 'CartPoleEnv';
@@ -19,11 +24,19 @@ config.criticLayerSizes = [64, 64];
 config.useGPU = true; % 根据需要设置是否使用GPU
 
 % 创建PPO代理
-agent = PPOAgent(config);
+try
+    agent = PPOAgent(config);
+catch ME
+    error('创建PPO代理失败: %s', ME.message);
+end
 
 % 加载模型
 fprintf('加载模型: %s\n', modelPath);
-agent.loadModel(modelPath);
+try
+    agent.loadModel(modelPath);
+catch ME
+    error('加载模型失败: %s', ME.message);
+end
 
 % 测试参数
 numEpisodes = 10;  % 测试回合数

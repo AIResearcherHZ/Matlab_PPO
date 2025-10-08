@@ -14,7 +14,12 @@ classdef Logger < handle
         function obj = Logger(logDir, envName)
             % 构造函数：初始化日志记录器
             %   logDir - 日志保存目录
-            %   envName - 环境名称
+            %   envName - 环境名称（可选）
+            
+            % 验证输入
+            if nargin < 2
+                envName = 'unknown';
+            end
             
             % 设置日志目录和环境名称
             obj.logDir = logDir;
@@ -48,6 +53,11 @@ classdef Logger < handle
             %   iteration - 当前迭代次数
             %   metrics - 包含各种指标的结构体
             
+            % 验证输入
+            assert(isstruct(metrics), 'Logger:指标必须是结构体');
+            assert(isfield(metrics, 'actorLoss'), 'Logger:缺少actorLoss字段');
+            assert(isfield(metrics, 'criticLoss'), 'Logger:缺少criticLoss字段');
+            
             % 添加到训练统计数据
             obj.trainStats.iterations(end+1) = iteration;
             obj.trainStats.actorLoss(end+1) = metrics.actorLoss;
@@ -69,6 +79,10 @@ classdef Logger < handle
             % 记录评估结果
             %   iteration - 当前迭代次数
             %   evalResult - 评估结果
+            
+            % 验证输入
+            assert(isstruct(evalResult), 'Logger:评估结果必须是结构体');
+            assert(isfield(evalResult, 'meanReturn'), 'Logger:缺少meanReturn字段');
             
             % 添加到评估统计数据
             obj.evalStats.iterations(end+1) = iteration;

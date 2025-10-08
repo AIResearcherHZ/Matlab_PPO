@@ -103,9 +103,7 @@ classdef MAPPOConfig < handle
         
         function obj = loadFromFile(obj, filepath)
             % 从文件加载配置
-            if ~exist(filepath, 'file')
-                error('配置文件不存在: %s', filepath);
-            end
+            assert(exist(filepath, 'file') == 2, 'MAPPOConfig:配置文件不存在: %s', filepath);
             
             % 加载配置
             config = load(filepath);

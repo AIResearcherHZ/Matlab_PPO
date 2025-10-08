@@ -49,27 +49,34 @@ classdef DiscreteActorNetwork < handle
             probs = softmax(logits);
             
             % 从类别分布中采样
-            cumProbs = cumsum(extractdata(probs), 1);
+            probsData = extractdata(probs);
+            cumProbs = cumsum(probsData, 1);
+            
+            % 生成随机数
+            if obj.useGPU
+                r = rand(1, size(probs, 2), 'gpuArray');
+            else
+                r = rand(1, size(probs, 2));
+            end
+            
+            % 矢量化采样：找到每个样本对应的动作索引
+            actionIndices = sum(cumProbs < r, 1) + 1;
+            
+            % 创建one-hot编码的动作
+            actionSize = size(probs, 1);
+            batchSize = size(probs, 2);
             
             if obj.useGPU
-                r = dlarray(gpuArray(rand(1, size(probs, 2))), 'CB');
+                action = dlarray(gpuArray(zeros(actionSize, batchSize, 'single')), 'CB');
             else
-                r = dlarray(rand(1, size(probs, 2)), 'CB');
+                action = dlarray(zeros(actionSize, batchSize, 'single'), 'CB');
             end
             
-            % 初始化动作
-            actionSize = size(probs, 1);
-            action = zeros(size(probs), 'like', probs);
-            
-            % 根据采样结果设置one-hot动作
-            for i = 1:size(probs, 2)
-                for j = 1:actionSize
-                    if r(i) <= cumProbs(j, i)
-                        action(j, i) = 1;
-                        break;
-                    end
-                end
-            end
+            % 使用线性索引设置one-hot编码
+            linearIndices = sub2ind([actionSize, batchSize], actionIndices, 1:batchSize);
+            actionData = extractdata(action);
+            actionData(linearIndices) = 1;
+            action = dlarray(actionData, 'CB');
             
             % 计算对数概率
             logProb = log(sum(probs .* action, 1) + 1e-10);
@@ -124,11 +131,16 @@ classdef DiscreteActorNetwork < handle
             % 选择最高概率的动作
             [~, idx] = max(extractdata(probs), [], 1);
             
-            % 创建one-hot动作
+            % 创建one-hot动作（矢量化）
+            actionSize = size(probs, 1);
+            batchSize = size(probs, 2);
             action = zeros(size(probs), 'like', probs);
-            for i = 1:size(probs, 2)
-                action(idx(i), i) = 1;
-            end
+            
+            % 使用线性索引设置one-hot编码
+            linearIndices = sub2ind([actionSize, batchSize], idx, 1:batchSize);
+            actionData = extractdata(action);
+            actionData(linearIndices) = 1;
+            action = dlarray(actionData, 'CB');
         end
         
         function toGPU(obj)

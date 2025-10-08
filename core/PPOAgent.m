@@ -47,9 +47,17 @@ classdef PPOAgent < handle
             % 构造函数：初始化PPO代理
             %   config - 包含所有配置参数的结构体
             
+            % 验证输入
+            assert(~isempty(config.envName), 'PPOAgent:环境名称不能为空');
+            
             % 设置环境
             obj.envName = config.envName;
-            obj.env = feval(config.envName);
+            try
+                obj.env = feval(config.envName);
+            catch ME
+                error('PPOAgent:无法创建环境 %s: %s', config.envName, ME.message);
+            end
+            
             obj.obsSize = obj.env.observationSize;
             obj.actionSize = obj.env.actionSize;
             obj.isDiscrete = obj.env.isDiscrete;
@@ -109,7 +117,7 @@ classdef PPOAgent < handle
         end
         
         function initOptimizers(obj, config)
-            % 初始化优化器
+            % 初始化优化器状态（由dlupdate.sgdm管理）
             obj.actorOptimizer = [];
             obj.criticOptimizer = [];
             
@@ -122,6 +130,10 @@ classdef PPOAgent < handle
         function train(obj, numIterations)
             % 训练PPO代理
             %   numIterations - 训练迭代次数
+            
+            % 验证输入
+            assert(numIterations > 0 && numIterations == floor(numIterations), ...
+                'PPOAgent:迭代次数必须是正整数');
             
             fprintf('开始训练 %s 环境的PPO代理\n', obj.envName);
             
@@ -156,7 +168,7 @@ classdef PPOAgent < handle
             % 收集训练轨迹
             % 返回一个轨迹结构体数组
             
-            numTrajectories = ceil(obj.batchSize / obj.trajectoryLen);
+            numTrajectories = max(1, ceil(obj.batchSize / obj.trajectoryLen));
             trajectories(numTrajectories) = struct();
             
             for i = 1:numTrajectories
@@ -464,6 +476,10 @@ classdef PPOAgent < handle
         
         function loadModel(obj, filePath)
             % 加载模型
+            
+            % 验证文件是否存在
+            assert(exist(filePath, 'file') == 2, 'PPOAgent:模型文件不存在: %s', filePath);
+            
             load(filePath, 'actorParams', 'criticParams');
             
             % 设置模型参数
@@ -481,6 +497,10 @@ classdef PPOAgent < handle
         function result = evaluate(obj, numEpisodes)
             % 评估训练好的代理
             %   numEpisodes - 评估的回合数
+            
+            % 验证输入
+            assert(numEpisodes > 0 && numEpisodes == floor(numEpisodes), ...
+                'PPOAgent:评估回合数必须是正整数');
             
             returns = zeros(numEpisodes, 1);
             lengths = zeros(numEpisodes, 1);

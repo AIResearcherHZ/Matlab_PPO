@@ -73,11 +73,20 @@ classdef CartPoleEnv < Environment
             %     done - 是否回合结束
             %     info - 附加信息
             
+            % 如果是标量，直接使用；如果是one-hot向量，提取索引
+            if isscalar(action)
+                actionIdx = action;
+            else
+                % 处理one-hot编码的动作
+                [~, actionIdx] = max(action);
+                actionIdx = actionIdx - 1; % 转换为0或1
+            end
+            
             % 验证动作
-            assert(isscalar(action) && (action == 0 || action == 1), '动作必须是0或1');
+            assert(actionIdx == 0 || actionIdx == 1, 'CartPoleEnv:动作必须是0或1');
             
             % 将动作转换为力
-            force = (action * 2 - 1) * obj.forceMag;  % 0 -> -10, 1 -> 10
+            force = (actionIdx * 2 - 1) * obj.forceMag;  % 0 -> -10, 1 -> 10
             
             % 解包状态
             x = obj.state(1);

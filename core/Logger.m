@@ -40,13 +40,12 @@ classdef Logger < handle
             % 写入日志头部信息
             obj.writeLog(sprintf('开始训练 %s 环境', obj.envName));
             obj.writeLog(sprintf('日志目录: %s', obj.logDir));
-            obj.writeLog('=' * 50);
+            obj.writeLog(repmat('=', 1, 50));
         end
         
         function logIteration(obj, iteration, metrics)
             % 记录单次迭代的指标
             %   iteration - 迭代次数
-            %   metrics - 包含各种损失值的结构体
             
             % 更新历史记录
             obj.metricsHistory.iteration(end+1) = iteration;
@@ -151,3 +150,4 @@ classdef Logger < handle
             obj.writeLog(sprintf('指标数据已保存到: %s', metricsFile));
         end
     end
+end

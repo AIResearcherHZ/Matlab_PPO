@@ -87,9 +87,7 @@ classdef PPOConfig < handle
             %   返回填充了配置的对象
             
             % 检查文件是否存在
-            if ~exist(filePath, 'file')
-                error('配置文件不存在: %s', filePath);
-            end
+            assert(exist(filePath, 'file') == 2, 'PPOConfig:配置文件不存在: %s', filePath);
             
             % 加载配置
             configData = load(filePath);
