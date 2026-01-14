@@ -122,29 +122,31 @@ test_acmotor
 test_doublependulum
 ```
 
-#### 2. Custom Configuration
+#### 3. Custom Configuration
 
 ```matlab
 % Create and modify configuration
 config = PPOConfig();
+config.envName = 'CartPoleEnv';  % Environment name
 config.gamma = 0.99;             % Discount factor
 config.epsilon = 0.2;            % Clipping parameter
 config.actorLearningRate = 3e-4; % Policy network learning rate
 config.useGPU = true;            % Enable GPU acceleration
+config.numIterations = 100;      % Training iterations
 
-% Train with custom configuration
-agent = PPOAgent(env, config);
-agent.train();
+% Create agent and train
+agent = PPOAgent(config);
+agent.train(config.numIterations);
 ```
 
-#### 3. Save and Load Models
+#### 4. Save and Load Models
 
 ```matlab
 % Save trained model
-agent.save('my_trained_model.mat');
+agent.saveModel('my_trained_model.mat');
 
 % Load model
-agent = PPOAgent.load('my_trained_model.mat', env);
+agent.loadModel('my_trained_model.mat');
 ```
 
 ## 📁 Directory Structure

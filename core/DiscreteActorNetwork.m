@@ -143,6 +143,11 @@ classdef DiscreteActorNetwork < handle
             action = dlarray(actionData, 'CB');
         end
         
+        function action = getMeanAction(obj, observation)
+            % 获取确定性动作（与getBestAction相同，用于兼容连续动作网络接口）
+            action = obj.getBestAction(observation);
+        end
+        
         function toGPU(obj)
             % 将网络参数转移到GPU
             obj.useGPU = true;

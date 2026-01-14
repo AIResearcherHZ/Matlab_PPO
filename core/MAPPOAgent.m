@@ -75,18 +75,21 @@ classdef MAPPOAgent < handle
                     obj.actorNets{i} = DiscreteActorNetwork(...
                         obj.env.observationSize(i), ...
                         obj.env.actionSize(i), ...
-                        obj.config.actorLayerSizes, ...
-                        obj.useGPU);
+                        obj.config.actorLayerSizes);
                 else
                     % 连续动作空间
                     obj.actorNets{i} = ContinuousActorNetwork(...
                         obj.env.observationSize(i), ...
                         obj.env.actionSize(i), ...
-                        obj.config.actorLayerSizes, ...
-                        obj.useGPU);
+                        obj.config.actorLayerSizes);
                 end
                 
-                % 初始化优化器状态为空（由dlupdate.sgdm管理）
+                % 如果使用GPU，将网络迁移到GPU
+                if obj.useGPU
+                    obj.actorNets{i}.toGPU();
+                end
+                
+                % 初始化优化器状态为空
                 obj.actorOptimizers{i} = [];
             end
             
@@ -94,8 +97,12 @@ classdef MAPPOAgent < handle
             totalObsSize = sum(obj.env.observationSize);
             obj.criticNet = CriticNetwork(...
                 totalObsSize, ...
-                obj.config.criticLayerSizes, ...
-                obj.useGPU);
+                obj.config.criticLayerSizes);
+            
+            % 如果使用GPU，将网络迁移到GPU
+            if obj.useGPU
+                obj.criticNet.toGPU();
+            end
             
             % 初始化价值网络优化器状态为空（由dlupdate.sgdm管理）
             obj.criticOptimizer = [];
@@ -120,8 +127,8 @@ classdef MAPPOAgent < handle
             );
             trajectories = repmat(trajectories, numTrajectories, 1);
             
-            % 并行收集多条轨迹
-            parfor trajectIdx = 1:numTrajectories
+            % 收集多条轨迹
+            for trajectIdx = 1:numTrajectories
                 % 重置环境
                 [agentObs, jointObs] = obj.env.reset();
                 
@@ -404,11 +411,11 @@ classdef MAPPOAgent < handle
                             dlAdvantages, obj.config.epsilon, obj.config.entropyCoef);
                         
                         % 应用梯度裁剪
-                        gradients = dlupdate.clipgradients(gradients, obj.config.maxGradNorm);
+                        gradients = thresholdL2Norm(gradients, obj.config.maxGradNorm);
                         
                         % 更新网络权重
                         [obj.actorNets{agentIdx}.learnables, obj.actorOptimizers{agentIdx}] = ...
-                            dlupdate.sgdm(obj.actorNets{agentIdx}.learnables, gradients, ...
+                            sgdmupdate(obj.actorNets{agentIdx}.learnables, gradients, ...
                             obj.actorOptimizers{agentIdx}, obj.actorLearningRate, obj.momentum);
                         
                         % 记录损失
@@ -442,11 +449,11 @@ classdef MAPPOAgent < handle
                         obj.criticNet, dlJointObs, dlReturns, obj.config.vfCoef);
                     
                     % 应用梯度裁剪
-                    gradients = dlupdate.clipgradients(gradients, obj.config.maxGradNorm);
+                    gradients = thresholdL2Norm(gradients, obj.config.maxGradNorm);
                     
                     % 更新网络权重
                     [obj.criticNet.learnables, obj.criticOptimizer] = ...
-                        dlupdate.sgdm(obj.criticNet.learnables, gradients, ...
+                        sgdmupdate(obj.criticNet.learnables, gradients, ...
                         obj.criticOptimizer, obj.criticLearningRate, obj.momentum);
                     
                     % 记录价值网络损失

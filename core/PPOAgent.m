@@ -357,15 +357,15 @@ classdef PPOAgent < handle
                     
                     % 梯度裁剪
                     if obj.maxGradNorm > 0
-                        actorGradients = dlupdate.clipgradients(actorGradients, obj.maxGradNorm);
-                        criticGradients = dlupdate.clipgradients(criticGradients, obj.maxGradNorm);
+                        actorGradients = thresholdL2Norm(actorGradients, obj.maxGradNorm);
+                        criticGradients = thresholdL2Norm(criticGradients, obj.maxGradNorm);
                     end
                     
                     % 更新Actor网络
-                    [obj.actorNet.learnables, obj.actorOptimizer] = dlupdate.sgdm(obj.actorNet.learnables, actorGradients, obj.actorOptimizer, obj.actorLearningRate, obj.momentum);
+                    [obj.actorNet.learnables, obj.actorOptimizer] = sgdmupdate(obj.actorNet.learnables, actorGradients, obj.actorOptimizer, obj.actorLearningRate, obj.momentum);
                     
                     % 更新Critic网络
-                    [obj.criticNet.learnables, obj.criticOptimizer] = dlupdate.sgdm(obj.criticNet.learnables, criticGradients, obj.criticOptimizer, obj.criticLearningRate, obj.momentum);
+                    [obj.criticNet.learnables, obj.criticOptimizer] = sgdmupdate(obj.criticNet.learnables, criticGradients, obj.criticOptimizer, obj.criticLearningRate, obj.momentum);
                     
                     % 记录损失值
                     actorLosses(end+1) = actorLoss;

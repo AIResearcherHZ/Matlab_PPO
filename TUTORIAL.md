@@ -2,8 +2,6 @@
 
 > For Chinese version, please refer to [TUTORIAL_zh.md](TUTORIAL_zh.md)
 
-# Matlab PPO Reinforcement Learning Framework Detailed Tutorial
-
 This tutorial provides an in-depth explanation of the Matlab PPO reinforcement learning framework, including algorithm principles, implementation details, environment model descriptions and extension guidelines.
 
 ## Table of Contents
@@ -402,11 +400,8 @@ This framework supports MATLAB's GPU acceleration to significantly improve train
 config = PPOConfig();
 config.useGPU = true;
 
-% Ensure network parameters are on GPU
-net = dlnetwork(netLayers);
-if config.useGPU && canUseGPU()
-    net = dlupdate(@gpuArray, net);
-end
+% Create agent - GPU migration is handled automatically
+agent = PPOAgent(config);
 ```
 
 Using GPU acceleration requires installing compatible CUDA and GPU computing toolboxes. For large networks, GPU acceleration can improve training speed by 5-10x.
@@ -416,21 +411,14 @@ Using GPU acceleration requires installing compatible CUDA and GPU computing too
 This framework utilizes MATLAB's Parallel Computing Toolbox for parallelizing data collection:
 
 ```matlab
-% Enable parallel computing in configuration
+% The framework handles trajectory collection internally
+% For parallel computing, ensure Parallel Computing Toolbox is installed
 config = PPOConfig();
-config.useParallel = true;
-config.numWorkers = 4;  % Number of parallel workers
+config.numTrajectories = 10;  % Number of trajectories to collect
 
-% Parallel trajectory collection
-if config.useParallel
-    parfor i = 1:numTrajectories
-        % ... Parallel collect trajectories ...
-    end
-else
-    for i = 1:numTrajectories
-        % ... Serial collect trajectories ...
-    end
-end
+% Create and train agent
+agent = PPOAgent(config);
+agent.train(config.numIterations);
 ```
 
 Parallel computing is particularly suitable for trajectory collection as different trajectories have no dependencies. For complex environments and large numbers of trajectories, near-linear speedup can be achieved.

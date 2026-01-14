@@ -122,29 +122,31 @@ test_acmotor
 test_doublependulum
 ```
 
-#### 2. 自定义配置
+#### 3. 自定义配置
 
 ```matlab
 % 创建和修改配置
 config = PPOConfig();
+config.envName = 'CartPoleEnv';  % 环境名称
 config.gamma = 0.99;             % 折扣因子
 config.epsilon = 0.2;            % 裁剪参数
 config.actorLearningRate = 3e-4; % 策略网络学习率
 config.useGPU = true;            % 启用GPU加速
+config.numIterations = 100;      % 训练迭代次数
 
-% 使用自定义配置训练
-agent = PPOAgent(env, config);
-agent.train();
+% 创建代理并训练
+agent = PPOAgent(config);
+agent.train(config.numIterations);
 ```
 
-#### 3. 保存和加载模型
+#### 4. 保存和加载模型
 
 ```matlab
 % 保存训练好的模型
-agent.save('my_trained_model.mat');
+agent.saveModel('my_trained_model.mat');
 
 % 加载模型
-agent = PPOAgent.load('my_trained_model.mat', env);
+agent.loadModel('my_trained_model.mat');
 ```
 
 ## 📁 目录结构

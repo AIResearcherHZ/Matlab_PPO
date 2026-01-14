@@ -1,7 +1,8 @@
 classdef DoublePendulumEnv < handle
-    % DoublePendulumEnv 双倒立摆环境
+    % DoublePendulumEnv 双倒立摆环境（多智能体）
     %   一个需要多智能体协作的控制问题
     %   两个智能体各自控制一个摆杆，需要协同工作将摆杆保持在倒立位置
+    %   注意：此环境为多智能体环境，不继承单智能体Environment基类
     
     properties
         % 环境参数
@@ -31,17 +32,29 @@ classdef DoublePendulumEnv < handle
         pendulum1Line       % 第一摆杆线
         pendulum2Line       % 第二摆杆线
         
-        % 观察空间和动作空间维度
-        obsSize             % 每个智能体的观察空间大小
+        % 多智能体环境属性
+        numAgents = 2       % 智能体数量
+    end
+    
+    properties (Dependent)
+        % 观察空间和动作空间维度（依赖属性）
+        observationSize     % 每个智能体的观察空间大小
         actionSize          % 每个智能体的动作空间大小
     end
     
     methods
         function obj = DoublePendulumEnv()
             % 构造函数
-            % 初始化观察空间和动作空间维度
-            obj.obsSize = [4, 4];  % 每个智能体的观察空间维度
-            obj.actionSize = [1, 1];  % 每个智能体的动作空间维度
+        end
+        
+        function size = get.observationSize(obj)
+            % 返回每个智能体的观察空间维度
+            size = [4, 4];
+        end
+        
+        function size = get.actionSize(obj)
+            % 返回每个智能体的动作空间维度
+            size = [1, 1];
         end
         
         function [agentObs, jointObs] = reset(obj)
@@ -229,18 +242,7 @@ classdef DoublePendulumEnv < handle
         
         function result = isDiscreteAction(obj, agentIdx)
             % 判断动作空间是否离散
-            % 本环境使用连续动作空间
             result = false;
-        end
-        
-        function size = observationSize(obj, agentIdx)
-            % 返回指定智能体的观察空间维度
-            size = obj.obsSize(agentIdx);
-        end
-        
-        function size = actionSize(obj, agentIdx)
-            % 返回指定智能体的动作空间维度
-            size = obj.actionSize(agentIdx);
         end
         
         function close(obj)

@@ -98,6 +98,38 @@ classdef Logger < handle
             obj.plotEvaluationCurves();
         end
         
+        function logTrainingMetrics(obj, iteration, meanReturn, meanLength, actorLoss, criticLoss, entropy)
+            % 记录训练指标（兼容MAPPOAgent调用）
+            metrics = struct();
+            metrics.actorLoss = actorLoss;
+            metrics.criticLoss = criticLoss;
+            metrics.entropyLoss = -entropy;
+            metrics.totalLoss = actorLoss + criticLoss;
+            
+            obj.trainStats.iterations(end+1) = iteration;
+            obj.trainStats.actorLoss(end+1) = actorLoss;
+            obj.trainStats.criticLoss(end+1) = criticLoss;
+            obj.trainStats.entropyLoss(end+1) = -entropy;
+            obj.trainStats.totalLoss(end+1) = actorLoss + criticLoss;
+            
+            if ~isfield(obj.evalStats, 'trainReturns')
+                obj.evalStats.trainReturns = [];
+                obj.evalStats.trainLengths = [];
+            end
+            obj.evalStats.trainReturns(end+1) = meanReturn;
+            obj.evalStats.trainLengths(end+1) = meanLength;
+        end
+        
+        function logEvaluationMetrics(obj, iteration, meanReturn, stdReturn, minReturn, maxReturn)
+            % 记录评估指标（兼容MAPPOAgent调用）
+            obj.evalStats.iterations(end+1) = iteration;
+            obj.evalStats.returns(end+1) = meanReturn;
+            if ~isfield(obj.evalStats, 'stdReturns')
+                obj.evalStats.stdReturns = [];
+            end
+            obj.evalStats.stdReturns(end+1) = stdReturn;
+        end
+        
         function plotTrainingCurves(obj)
             % 绘制训练曲线
             
@@ -187,6 +219,16 @@ classdef Logger < handle
             evalData = obj.evalStats;
             save(fullfile(obj.logDir, 'training_data.mat'), 'trainData', 'evalData');
             fprintf('训练数据已保存到: %s\n', fullfile(obj.logDir, 'training_data.mat'));
+        end
+        
+        function plotMetrics(obj)
+            % 绘制训练指标（兼容PPOAgent调用）
+            obj.plotTrainingCurves();
+        end
+        
+        function saveMetrics(obj)
+            % 保存指标数据（兼容PPOAgent调用）
+            obj.saveTrainingData();
         end
     end
 end

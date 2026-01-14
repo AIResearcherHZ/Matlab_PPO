@@ -400,11 +400,8 @@ end
 config = PPOConfig();
 config.useGPU = true;
 
-% 确保网络参数在GPU上
-net = dlnetwork(netLayers);
-if config.useGPU && canUseGPU()
-    net = dlupdate(@gpuArray, net);
-end
+% 创建代理 - GPU迁移自动处理
+agent = PPOAgent(config);
 ```
 
 使用GPU加速需要安装兼容的CUDA和GPU计算工具箱。对于大型网络，GPU加速可提升5-10倍的训练速度。
@@ -414,21 +411,14 @@ end
 本框架利用MATLAB的并行计算工具箱进行数据收集的并行化：
 
 ```matlab
-% 在配置中启用并行计算
+% 框架内部处理轨迹收集
+% 如需并行计算，请确保安装了Parallel Computing Toolbox
 config = PPOConfig();
-config.useParallel = true;
-config.numWorkers = 4;  % 并行工作进程数
+config.numTrajectories = 10;  % 收集的轨迹数量
 
-% 并行收集轨迹
-if config.useParallel
-    parfor i = 1:numTrajectories
-        % ... 并行收集轨迹 ...
-    end
-else
-    for i = 1:numTrajectories
-        % ... 串行收集轨迹 ...
-    end
-end
+% 创建代理并训练
+agent = PPOAgent(config);
+agent.train(config.numIterations);
 ```
 
 并行计算特别适合轨迹收集阶段，因为不同轨迹之间没有依赖关系。对于复杂环境和大量轨迹，可以实现接近线性的加速。
