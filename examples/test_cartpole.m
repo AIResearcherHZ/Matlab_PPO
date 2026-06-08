@@ -1,0 +1,23 @@
+root = fileparts(fileparts(mfilename('fullpath')));
+addpath(fullfile(root, 'core'), fullfile(root, 'utils'), ...
+        fullfile(root, 'environments'), fullfile(root, 'config'));
+
+modelPath = fullfile(root, 'logs', 'cartpole', 'model_final.mat');
+if exist(modelPath, 'file') ~= 2
+    error('Model not found: %s\nRun train_cartpole first.', modelPath);
+end
+
+agent = PPO(CartPoleEnv(), rlConfig('CartPole'));
+agent.load(modelPath);
+res = agent.evaluate(20);
+fprintf('CartPole test: mean %.2f +/- %.2f, min %.2f, max %.2f\n', ...
+        res.meanReturn, res.stdReturn, res.minReturn, res.maxReturn);
+
+doRender = false;
+if doRender
+    env = CartPoleEnv(); obs = env.reset(); done = false;
+    while ~done
+        [obs, ~, done, ~] = env.step(agent.predict(obs, true));
+        env.render(); pause(0.02);
+    end
+end
